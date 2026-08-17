@@ -224,7 +224,7 @@ if (status === "APPROVED") {
    
 
     // 🔗 Create link
-     link =  `http://localhost:5500/pages/set-password.html?token=${token}`;
+     link = `http://3.110.55.186/pages/set-password?token=${token}`;
 
     //  Send email ONLY first time
     await sendEmail(
