@@ -412,21 +412,26 @@ exports.reviewDocuments = async (req, res, next) => {
     submission.reviewComments = reviewComments;
 
     await submission.save();
-    if (status === "SUSPENDED") {
+   if (status === "SUSPENDED") {
 
-   const agent = await Agent.findById(submission.agentId);
+  const agent = await Agent.findById(submission.agentId);
 
-   if (agent) {
+  if (agent) {
 
-      const user = await User.findById(agent.userId);
+    // Update agent status
+    agent.agentStatus = "SUSPENDED";
+    agent.reviewComment = reviewComments || "Account suspended by admin";
 
-      if (user) {
+    await agent.save();
 
-         user.isSuspended = true;
+    // Block the user's login
+    const user = await User.findById(agent.userId);
 
-         await user.save();
-      }
-   }
+    if (user) {
+      user.isSuspended = true;
+      await user.save();
+    }
+  }
 }
 
     logger.info(`Submission ${id} marked as ${status}`);

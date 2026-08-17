@@ -50,6 +50,14 @@ exports.loginUser = async (req, res, next) => {
         message: "Invalid credentials"
       });
     }
+    // ================= CHECK SUSPENDED ACCOUNT =================
+if (user.isSuspended) {
+  logger.warn(`Login blocked - suspended account: ${email}`);
+
+  return res.status(403).json({
+    message: "Account blocked"
+  });
+}
 
     // Ensure JWT secret is configured
     if (!process.env.JWT_SECRET) {

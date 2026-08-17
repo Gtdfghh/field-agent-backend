@@ -35,7 +35,8 @@ exports.registerAgent = async (req, res, next) => {
   displayName,
   primaryZip,
   phoneNumber,
-  dateOfBirth
+  dateOfBirth,
+  hasCamera
 });
 
 if (duplicateAgent) {
@@ -70,7 +71,7 @@ if (duplicateAgent) {
       await Notification.create({
         agentId: existing._id,  
         type: "WELCOME",
-        message: "Re-registration successfully.",
+        message: "Registration successfully.",
         sentAt: new Date(),
         status: "SENT"
       });
@@ -88,7 +89,7 @@ We will notify you soon.`
       return res.status(200).json({
         agentId: existing._id,
         agentStatus: "PENDING",
-        message: "Re-registration successful. Awaiting admin approval."
+        message: "Registration successful."
       });
     }
 
@@ -224,7 +225,7 @@ if (status === "APPROVED") {
    
 
     // 🔗 Create link
-     link = `http://3.110.55.186/pages/set-password?token=${token}`;
+     link = `http://3.110.55.186/pages/set-password.html?token=${token}`;
 
     //  Send email ONLY first time
     await sendEmail(
@@ -325,54 +326,86 @@ exports.getAgents = async (req, res, next) => {
 
     logger.info("GET /agents API called");
 
-     // Ensure only ADMIN can access this API
+    // Only ADMIN can access
     if (req.user.role !== "ADMIN") {
-      logger.warn("Unauthorized access attempt to getAgents API");
       return res.status(403).json({
         message: "Only admin can view agents"
       });
     }
-    // Extract query parameters for filtering and pagination
 
-    const { status, email, page = 1, limit = 10 } = req.query;
+    const {
+      status,
+      email,
+      page = 1,
+      limit = 10
+    } = req.query;
 
     const filter = {};
 
-       // Apply optional filter: agent status
+    // Filter by status
     if (status) {
       filter.agentStatus = status;
     }
 
-     // Apply optional filter: agent email
+    // Filter by email
     if (email) {
       filter.email = email;
     }
-     // Calculate pagination offset
 
-    const skip = (page - 1) * limit;
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
 
-    logger.info(`Fetching agents with filter: ${JSON.stringify(filter)}`);
-
-    // Fetch paginated agent list
+    // Get agents for current page
     const agents = await Agent.find(filter)
-    .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(limitNumber);
 
-// Get total count for pagination metadata
+    // Total records for current filter
     const totalRecords = await Agent.countDocuments(filter);
 
-    logger.info(`Total agents fetched: ${agents.length}`);
+    // ================= GLOBAL COUNTS =================
 
-// Send response with pagination details
-    res.json({
+    const totalAgents = await Agent.countDocuments();
+
+    const approvedAgents = await Agent.countDocuments({
+      agentStatus: "APPROVED"
+    });
+
+    const pendingAgents = await Agent.countDocuments({
+      agentStatus: "PENDING"
+    });
+
+    const rejectedAgents = await Agent.countDocuments({
+      agentStatus: "REJECTED"
+    });
+
+    const suspendedAgents = await Agent.countDocuments({
+      agentStatus: "SUSPENDED"
+    });
+
+    // ================= RESPONSE =================
+
+    res.status(200).json({
+
       data: agents,
+
       pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(totalRecords / Number(limit)),
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(totalRecords / limitNumber),
         totalRecords
+      },
+
+      stats: {
+        total: totalAgents,
+        approved: approvedAgents,
+        pending: pendingAgents,
+        rejected: rejectedAgents,
+        suspended: suspendedAgents
       }
+
     });
 
   } catch (error) {
