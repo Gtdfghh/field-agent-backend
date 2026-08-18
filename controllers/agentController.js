@@ -230,7 +230,7 @@ if (status === "APPROVED") {
     //  Send email ONLY first time
     await sendEmail(
       agent.email,
-      "Agent Approved",s
+      "Agent Approved",
       `Hello ${agent.displayName},
 
 Your account is approved.
