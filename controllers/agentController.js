@@ -225,12 +225,12 @@ if (status === "APPROVED") {
    
 
     // 🔗 Create link
-     link = `http://3.110.55.186/pages/set-password.html?token=${token}`;
+     link = `http://3.7.252.178/pages/set-password.html?token=${token}`;
 
     //  Send email ONLY first time
     await sendEmail(
       agent.email,
-      "Agent Approved",
+      "Agent Approved",s
       `Hello ${agent.displayName},
 
 Your account is approved.
@@ -320,92 +320,59 @@ Please contact support or reapply.`
 };
 
 // ================= GET ALL AGENTS  =================
-
 exports.getAgents = async (req, res, next) => {
   try {
 
     logger.info("GET /agents API called");
 
-    // Only ADMIN can access
+     // Ensure only ADMIN can access this API
     if (req.user.role !== "ADMIN") {
+      logger.warn("Unauthorized access attempt to getAgents API");
       return res.status(403).json({
         message: "Only admin can view agents"
       });
     }
+    // Extract query parameters for filtering and pagination
 
-    const {
-      status,
-      email,
-      page = 1,
-      limit = 10
-    } = req.query;
+    const { status, email, page = 1, limit = 10 } = req.query;
 
     const filter = {};
 
-    // Filter by status
+       // Apply optional filter: agent status
     if (status) {
       filter.agentStatus = status;
     }
 
-    // Filter by email
+     // Apply optional filter: agent email
     if (email) {
       filter.email = email;
     }
+     // Calculate pagination offset
 
-    const pageNumber = Number(page);
-    const limitNumber = Number(limit);
-    const skip = (pageNumber - 1) * limitNumber;
+    const skip = (page - 1) * limit;
 
-    // Get agents for current page
+    logger.info(`Fetching agents with filter: ${JSON.stringify(filter)}`);
+
+    // Fetch paginated agent list
     const agents = await Agent.find(filter)
-      .sort({ createdAt: -1 })
+    .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limitNumber);
+      .limit(Number(limit));
 
-    // Total records for current filter
+// Get total count for pagination metadata
     const totalRecords = await Agent.countDocuments(filter);
 
-    // ================= GLOBAL COUNTS =================
+    logger.info(`Total agents fetched: ${agents.length}`);
 
-    const totalAgents = await Agent.countDocuments();
-
-    const approvedAgents = await Agent.countDocuments({
-      agentStatus: "APPROVED"
-    });
-
-    const pendingAgents = await Agent.countDocuments({
-      agentStatus: "PENDING"
-    });
-
-    const rejectedAgents = await Agent.countDocuments({
-      agentStatus: "REJECTED"
-    });
-
-    const suspendedAgents = await Agent.countDocuments({
-      agentStatus: "SUSPENDED"
-    });
-
-    // ================= RESPONSE =================
-
-    res.status(200).json({
-
+// Send response with pagination details
+    res.json({
       data: agents,
-
       pagination: {
-        page: pageNumber,
-        limit: limitNumber,
-        totalPages: Math.ceil(totalRecords / limitNumber),
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(totalRecords / Number(limit)),
         totalRecords
-      },
-
-      stats: {
-        total: totalAgents,
-        approved: approvedAgents,
-        pending: pendingAgents,
-        rejected: rejectedAgents,
-        suspended: suspendedAgents
       }
-
     });
 
   } catch (error) {
@@ -415,6 +382,7 @@ exports.getAgents = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // ================= GET AGENT DASHBOARD =================
 

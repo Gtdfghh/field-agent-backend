@@ -169,7 +169,7 @@ exports.forgotPassword = async (req, res) => {
 
     await user.save();
 
-    const link = `http://3.110.55.186/pages/reset-password.html?token=${token}`;
+    const link = `http://3.7.252.178/pages/reset-password.html?token=${token}`;
 
     const sendEmail = require("../utils/emailService");
 
